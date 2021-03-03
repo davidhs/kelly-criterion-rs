@@ -14,7 +14,16 @@ enum ToOrchestratorMessage {
 /// the workers directly.
 
 /// Runs the orchestra
-pub fn run(mut tasks: Vec<Task>) -> Vec<TaskResult> {
+pub fn run(simulations: Vec<Simulation>) -> Vec<SimulationResult> {
+    let mut tasks: Vec<Task> = Vec::new();
+    {
+        let mut id = 0;
+        for simulation in simulations {
+            tasks.push(Task { id, simulation });
+            id += 1;
+        }
+    }
+
     let nr_of_workers = num_cpus::get();
     let mut nr_of_available_workers = nr_of_workers;
 
@@ -144,7 +153,14 @@ pub fn run(mut tasks: Vec<Task>) -> Vec<TaskResult> {
 
     // todo!();
 
-    task_results
+    let mut simulation_results: Vec<SimulationResult> = Vec::new();
+
+    for task_result in task_results {
+        let simulation_result = task_result.simulation_result;
+        simulation_results.push(simulation_result);
+    }
+
+    simulation_results
 }
 
 // TODO: Simulation and Task are to intertwined.

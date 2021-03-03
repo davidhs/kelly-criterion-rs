@@ -1,18 +1,16 @@
 mod orchestra;
 mod simulation;
 
-use orchestra::Task;
 use simulation::Simulation;
 use std::env;
 use std::time::Instant;
 
 pub fn run(repetitions: i32) {
     // Tasks are stored in a queue.
-    let mut tasks: Vec<Task> = Vec::new();
+    let mut simulations: Vec<Simulation> = Vec::new();
 
     // Create tasks
     for i in 0..=100 {
-        let id = i;
         let bet_proportion = (i as f64) / 100.0;
 
         let simulation = Simulation {
@@ -24,12 +22,10 @@ pub fn run(repetitions: i32) {
             repetitions,
         };
 
-        let task = Task { id, simulation };
-
-        tasks.push(task);
+        simulations.push(simulation);
     }
 
-    let task_results = orchestra::run(tasks);
+    let simulation_results = orchestra::run(simulations);
 
     println!(
         "{}\t{}\t{}\t{}\n",
@@ -37,9 +33,7 @@ pub fn run(repetitions: i32) {
     );
 
     // Display results
-    for task_result in task_results {
-        let simulation_result = task_result.simulation_result;
-
+    for simulation_result in simulation_results {
         let bet_proportion = simulation_result.bet_proportion;
         let avg_money = simulation_result.avg_money;
         let prop_lost = simulation_result.prop_lost;
