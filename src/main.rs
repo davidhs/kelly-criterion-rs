@@ -1,7 +1,5 @@
 mod orchestra;
 mod simulation;
-mod task;
-mod worker;
 
 use orchestra::Task;
 use simulation::Simulation;
