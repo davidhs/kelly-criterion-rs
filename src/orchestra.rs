@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
 
-pub enum ToOrchestratorMessage {
+enum ToOrchestratorMessage {
     TaskResult(TaskResult),
 }
 
@@ -160,7 +160,7 @@ pub struct Task {
 
 impl Task {
     /// Running task consumes the task.
-    pub fn run(self) -> TaskResult {
+    fn run(self) -> TaskResult {
         TaskResult {
             id: self.id,
             simulation_result: self.simulation.run(),
@@ -171,28 +171,28 @@ impl Task {
 #[derive(Debug)]
 pub struct TaskResult {
     /// The result for task with the corresponding ID.
-    pub id: usize,
+    id: usize,
     /// Result of running simulation
     pub simulation_result: SimulationResult,
 }
 
 /// Messages that are intended for the worker.
-pub enum ToWorkerMessage {
+enum ToWorkerMessage {
     /// A worker gets assigned a new task.
     Task(Task),
     /// A worker should terminate
     Terminate,
 }
 
-pub struct Worker {
+struct Worker {
     /// ID of worker.
-    pub thread: Option<thread::JoinHandle<()>>,
+    thread: Option<thread::JoinHandle<()>>,
 }
 
 impl Worker {
     /// Creates a new worker that starts spinning right away and awaits new
     /// tasks to execute.
-    pub fn new(
+    fn new(
         to_worker_receiver: Arc<Mutex<Receiver<ToWorkerMessage>>>,
         to_orchestrator_sender: Arc<Mutex<Sender<ToOrchestratorMessage>>>,
     ) -> Worker {
