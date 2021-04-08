@@ -34,16 +34,17 @@ pub fn run(simulations: Vec<Simulation>) -> Vec<SimulationResult> {
 
     // Set up channels so workers and the orchestrator can communicate.
 
-    // Send a task from a single orchestrator to multiple workers.
+    // A channel to send a task from a single orchestrator to multiple workers.
     let (to_worker_sender, to_worker_receiver) = channel::<ToWorkerMessage>();
 
-    // Send a task result from multiple works to a single orchestrator
+    // A channel to send a task result from multiple works to a single orchestrator.
     let (to_orchestrator_sender, to_orchestrator_receiver) = channel::<ToOrchestratorMessage>();
 
-    // All workers ...
     let to_worker_receiver = Arc::new(Mutex::new(to_worker_receiver));
     let to_orchestrator_sender = Arc::new(Mutex::new(to_orchestrator_sender));
 
+    // Create workers
+    
     let mut workers = Vec::with_capacity(nr_of_workers);
 
     for id in 0..nr_of_workers {
