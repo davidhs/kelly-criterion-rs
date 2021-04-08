@@ -2,6 +2,8 @@
 
 A simulation for the example given by the Wikipedia Kelly criterion article [^1].
 
+![Result graph](cover.png "Result graph")
+
 ## Notes
 
 Running:
