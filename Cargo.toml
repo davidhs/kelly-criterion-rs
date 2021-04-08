@@ -4,8 +4,69 @@ version = "0.1.0"
 authors = ["Davíð Helgason <david@eldeysoft.is>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 num_cpus = "1.0"
 rand = "0.8.3"
+
+[profile.dev]
+
+# No optimization
+opt-level = 0
+
+# Full debug info
+debug = true
+
+#
+# split-debuginfo = '...'  # Platform-specific.
+
+# Include debug assertions
+debug-assertions = true
+
+# Include runtime integer overflow chekcs
+overflow-checks = true
+
+# Do not link time optimize
+lto = false
+
+# Unwind stack upon panic
+panic = 'unwind'
+
+# Use incremental compilation
+incremental = true
+
+# How many code generation units a crate is split into
+codegen-units = 256
+
+#
+rpath = false
+
+[profile.release]
+# All optimization
+opt-level = 3
+
+# No debug information
+debug = false
+
+# ???
+# split-debuginfo = '...'  # Platform-specific.
+
+# ???
+debug-assertions = false
+
+# ???
+overflow-checks = false
+
+# Perform link time optimization
+lto = true
+
+# Usually "unwind"
+panic = "abort"
+
+# ???
+incremental = false
+
+# Produce code as fast as possible.
+codegen-units = 1
+
+# ???
+rpath = false

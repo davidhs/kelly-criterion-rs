@@ -1,3 +1,5 @@
+//! A module that describes a single simulation.
+
 use rand::Rng;
 
 /// Configuration for the simulation.
@@ -26,8 +28,6 @@ impl Simulation {
     ///
     /// Plays a betting game like described in the Wikipedia article on Kelly
     /// criterion
-    ///
-    /// TODO: rename to run.
     pub fn run(self) -> SimulationResult {
         let mut avg_money = 0.0;
         let mut avg_rounds = 0;

@@ -6,6 +6,8 @@ use std::env;
 use std::time::Instant;
 
 pub fn run(repetitions: i32) {
+    let now = Instant::now();
+
     // Tasks are stored in a queue.
     let mut simulations: Vec<Simulation> = Vec::new();
 
@@ -49,22 +51,22 @@ pub fn run(repetitions: i32) {
             bet_percent, avg_money, prop_lost, prop_maxed,
         );
     }
+
+    println!("\nTime elapsed: {} s", now.elapsed().as_secs_f64());
 }
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
+    let mut args = env::args().skip(1);
 
-    if args.len() == 2 {
-        let repetitions: i32 = args[1].parse().expect("Repetitions should be an integer.");
+    if let Some(arg) = args.next() {
+        let repetitions: i32 = arg.parse().unwrap();
 
-        let now = Instant::now();
+        assert!(repetitions >= 1);
 
         run(repetitions);
-
-        println!("\nTime elapsed: {} s", now.elapsed().as_secs_f64());
 
         return;
     }
 
-    println!("Usage: cargo run REPETITIONS");
+    println!("app REPETITIONS");
 }

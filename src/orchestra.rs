@@ -1,3 +1,5 @@
+//! A module that orchestrates the computation of multiple simulations to multiple workers.
+
 use crate::simulation::{Simulation, SimulationResult};
 use std::sync::mpsc::Receiver;
 use std::sync::mpsc::Sender;
@@ -6,15 +8,14 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
 
+/// A message that is intended for the orchestrator of the workers.
 enum ToOrchestratorMessage {
     TaskResult(TaskResult),
 }
 
-/// NOTE: only ever interact with the workers through the worker manager, never
-/// the workers directly.
-
 /// Runs the orchestra
 pub fn run(simulations: Vec<Simulation>) -> Vec<SimulationResult> {
+    // Package up each simulation into a task.
     let mut tasks: Vec<Task> = Vec::new();
     {
         let mut id = 0;
@@ -24,8 +25,14 @@ pub fn run(simulations: Vec<Simulation>) -> Vec<SimulationResult> {
         }
     }
 
+    // Create workers, a single worker for each logical core of your machine.
+
     let nr_of_workers = num_cpus::get();
     let mut nr_of_available_workers = nr_of_workers;
+
+    println!("Creating {} workers...", nr_of_workers);
+
+    // Set up channels so workers and the orchestrator can communicate.
 
     // Send a task from a single orchestrator to multiple workers.
     let (to_worker_sender, to_worker_receiver) = channel::<ToWorkerMessage>();
@@ -39,8 +46,9 @@ pub fn run(simulations: Vec<Simulation>) -> Vec<SimulationResult> {
 
     let mut workers = Vec::with_capacity(nr_of_workers);
 
-    for _ in 0..nr_of_workers {
+    for id in 0..nr_of_workers {
         let worker = Worker::new(
+            id,
             Arc::clone(&to_worker_receiver),
             Arc::clone(&to_orchestrator_sender),
         );
@@ -49,15 +57,19 @@ pub fn run(simulations: Vec<Simulation>) -> Vec<SimulationResult> {
 
     let mut task_results = Vec::new();
 
-    // Run task and task result loop.use task::Task;
+    // Start working on the tasks.  This loop runs until all the tasks are complete and all the workers are free.
     loop {
+        // Check if all workers are available.
         let all_available = nr_of_workers == nr_of_available_workers;
 
-        // Check if we're done.
+        // Check if we're done.  If there are no more pending tasks and all workers
+        // are done then we've finished all the tasks.
         if tasks.is_empty() && all_available {
             break;
         }
 
+        // This loop tries to assign as many tasks as possibles to workers if we have both
+        // remaining tasks and free workers.
         while !tasks.is_empty() {
             let none_available = nr_of_available_workers == 0;
             if none_available {
@@ -69,38 +81,34 @@ pub fn run(simulations: Vec<Simulation>) -> Vec<SimulationResult> {
             // Dequeue task from queue.
             let task = tasks.pop().expect("");
 
+            // Send task to worker.
             to_worker_sender
                 .send(ToWorkerMessage::Task(task))
                 .expect("");
             nr_of_available_workers -= 1;
         }
 
-        // TODO: block on receiving message from worker
+        // At this point we have to wait for a message from a worker before we can continue.
+        // Once a message is received that worker is free.
         let mut msg = to_orchestrator_receiver.recv().expect("");
         nr_of_available_workers += 1;
 
+        // Process message.
         match msg {
             ToOrchestratorMessage::TaskResult(task_result) => {
                 task_results.push(task_result);
             }
         }
 
+        // In this loop we check if there are more messages from the workers.  We don't wait
+        // for messages, just check if there are some waiting for us to respond to.  We process
+        // the messages.  Once we find no more messages waiting for us this loop stops.
         loop {
-            // NOTE: once a message is received from a worker then that worker is
-            // freed and available.
-
-            // TODO: update available workers queue
-
-            // TODO: Handle message (message_to_handle)
-
-            // TODO: check to see if there are more messages from the worker, if
-            // so handle them, until there are no more messages to handle.
-
             match to_orchestrator_receiver.try_recv() {
                 Ok(message) => {
-                    // TODO: does this free the worker?
                     msg = message;
 
+                    // Process message.
                     match msg {
                         ToOrchestratorMessage::TaskResult(task_result) => {
                             task_results.push(task_result);
@@ -116,6 +124,8 @@ pub fn run(simulations: Vec<Simulation>) -> Vec<SimulationResult> {
                             break;
                         }
                         TryRecvError::Disconnected => {
+                            // TODO: I don't remember what this was supposed to do.  When
+                            // can this happen?
                             todo!();
                         }
                     }
@@ -124,34 +134,29 @@ pub fn run(simulations: Vec<Simulation>) -> Vec<SimulationResult> {
         }
     }
 
-    // TODO: drop what needs to be dropped!
-    // println!("Sending terminate message to all workers.");
+    // Clean up.
+
+    // Send messages to workers to tell them to terminate.
 
     for _ in &workers {
         to_worker_sender.send(ToWorkerMessage::Terminate).unwrap();
     }
 
-    // println!("Shutting down all workers.");orchestrator
+    // Wait until all workers (threads) have terminated.
 
     let mut workers = workers;
 
     for worker in &mut workers {
-        // println!("Shutting down worker {}", worker.id);
-
         if let Some(thread) = worker.thread.take() {
             thread.join().unwrap();
         }
     }
 
+    // Sort the task results according to the task ID in ascending order.
+
     task_results.sort_by(|a, b| a.id.partial_cmp(&b.id).unwrap());
 
-    // TODO: use typestate pattern (?)
-
-    // TODO: dispose of wall workers
-
-    // TODO: return result or display result
-
-    // todo!();
+    // Place results into simulation results and return it.
 
     let mut simulation_results: Vec<SimulationResult> = Vec::new();
 
@@ -163,10 +168,7 @@ pub fn run(simulations: Vec<Simulation>) -> Vec<SimulationResult> {
     simulation_results
 }
 
-// TODO: Simulation and Task are to intertwined.
-
-/// In this multi-threaded solution, a task is the unit of work a thread works
-/// on.
+/// A task is the unit of work a thread works on.
 pub struct Task {
     /// The ID of this task, just some number to uniquely identify this task.
     pub id: usize,
@@ -175,7 +177,7 @@ pub struct Task {
 }
 
 impl Task {
-    /// Running task consumes the task.
+    /// Runs the task and returns a task result.  Running task consumes the task.
     fn run(self) -> TaskResult {
         TaskResult {
             id: self.id,
@@ -202,20 +204,22 @@ enum ToWorkerMessage {
 
 struct Worker {
     /// ID of worker.
+    // id: usize,
+    /// The optional handle to a thread.
     thread: Option<thread::JoinHandle<()>>,
 }
 
 impl Worker {
-    /// Creates a new worker that starts spinning right away and awaits new
-    /// tasks to execute.
+    /// Creates a new worker that starts spinning right away and waits for message.
+    /// The message either contains a task to work on or it tells the worker to shut down.
     fn new(
+        worker_id: usize,
         to_worker_receiver: Arc<Mutex<Receiver<ToWorkerMessage>>>,
         to_orchestrator_sender: Arc<Mutex<Sender<ToOrchestratorMessage>>>,
     ) -> Worker {
-        // TODO: the random number generator can be created here.
-
         let thread = thread::spawn(move || {
             loop {
+                // Wait for message from orchestrator.
                 let message: ToWorkerMessage = to_worker_receiver
                     .lock() // acquire the mutex
                     .expect("Worker: mutex to receive message to worker in a poisoned state.") // might fail if the mutex is in a poisoned state (e.g. other thread paniced while holding the lock)
@@ -223,9 +227,14 @@ impl Worker {
                     .expect("Worker: sending side of channel to worker is down.") // might fail, e.g. thread on sending side of the channel might have shut down
                 ;
 
+                // Carry out the command in the message.
                 match message {
                     ToWorkerMessage::Task(task) => {
+                        let task_id = task.id;
+                        println!("> Worker {} working on task {}...", worker_id, task_id);
+
                         let task_result = task.run();
+                        println!("< Worker {} completed task {}.", worker_id, task_id);
 
                         let wrapped_task_result = ToOrchestratorMessage::TaskResult(task_result);
 
@@ -238,6 +247,7 @@ impl Worker {
                             .expect("Worker: receiving side of channel to orchestrator down.");
                     }
                     ToWorkerMessage::Terminate => {
+                        println!("Worker {} terminating...", worker_id);
                         break;
                     }
                 }
@@ -245,6 +255,7 @@ impl Worker {
         });
 
         Worker {
+            // id: worker_id,
             thread: Some(thread),
         }
     }
