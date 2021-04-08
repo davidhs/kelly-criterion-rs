@@ -8,10 +8,9 @@ use std::time::Instant;
 pub fn run(repetitions: i32) {
     let now = Instant::now();
 
-    // Tasks are stored in a queue.
+    // Create simulations to run.
     let mut simulations: Vec<Simulation> = Vec::new();
 
-    // Create tasks
     for i in 0..=100 {
         let bet_proportion = (i as f64) / 100.0;
 
