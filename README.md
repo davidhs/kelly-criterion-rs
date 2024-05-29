@@ -27,4 +27,4 @@ cargo run --release 1000000
 ```
 takes about 9 seconds, which is roughly about 100x faster, on a AMD Ryzen 7 3700X 8-Core processor (16 threads).
 
-[^1]: <https://en.wikipedia.org/wiki/Kelly_criterion#Example>
+[^1]: <[https://en.wikipedia.org/wiki/Kelly_criterion#Example](https://en.wikipedia.org/wiki/Kelly_criterion#Betting_example_%E2%80%93_behavioural_experiment)>
